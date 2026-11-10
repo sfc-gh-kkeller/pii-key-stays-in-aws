@@ -1,0 +1,22 @@
+[workspace]
+name = "pii-key-stays-in-aws"
+channels = ["conda-forge"]
+platforms = ["osx-arm64", "osx-64", "linux-64", "linux-aarch64"]
+
+[tasks]
+test      = { cmd = "pytest -q tests" }
+setup     = { cmd = "bash setup.sh" }
+# Option A: encrypted records straight into BRONZE (the Kafka connector's job in production)
+produce-a = { cmd = "python client/produce.py --to bronze --count {{ n }}", args = [{ arg = "n", default = "1000" }] }
+# Option B: encrypted records to SQS (stands in for the Kafka topic)
+produce-b = { cmd = "python client/produce.py --to sqs --count {{ n }}", args = [{ arg = "n", default = "1000" }] }
+rotate    = { cmd = "python client/rotate_key.py" }
+teardown  = { cmd = "bash teardown.sh" }
+
+[dependencies]
+python = "3.12.*"
+boto3 = ">=1.35"
+awscrt = "*"          # botocore's login credential provider (`aws login`) needs it
+cryptography = ">=43"
+snowflake-connector-python = ">=3.12"
+pytest = ">=8"

@@ -1,0 +1,19 @@
+-- Option B, step 2 (after the AWS role trusts the integration): stage, bronze, pipe.
+-- Plaintext arrives already decrypted by the upstream Lambda in AWS; Snowflake holds no key and no
+-- decrypt function. Variables: &{bucket}
+USE ROLE ACCOUNTADMIN;
+USE WAREHOUSE PK_WH;
+USE SCHEMA PII_KEY_DEMO.OPT_B;
+
+CREATE STAGE IF NOT EXISTS LANDING URL = 's3://&{bucket}/silver-in/' STORAGE_INTEGRATION = PK_LANDING_INT
+  FILE_FORMAT = (TYPE = JSON);
+
+-- Bronze holds plaintext PHI from the first byte, so the PHI tag goes on it right away
+CREATE TABLE IF NOT EXISTS BRONZE_PLAIN (RECORD VARIANT, SRC_FILE STRING, LOADED_AT TIMESTAMP_LTZ)
+  CHANGE_TRACKING = TRUE;
+ALTER TABLE BRONZE_PLAIN MODIFY COLUMN RECORD SET TAG PII_KEY_DEMO.COMMON.PHI = 'record';
+GRANT SELECT ON TABLE BRONZE_PLAIN TO ROLE PK_PIPELINE;
+
+CREATE PIPE IF NOT EXISTS LANDING_PIPE AUTO_INGEST = TRUE AS
+  COPY INTO BRONZE_PLAIN (RECORD, SRC_FILE, LOADED_AT)
+  FROM (SELECT $1, METADATA$FILENAME, CURRENT_TIMESTAMP() FROM @LANDING);

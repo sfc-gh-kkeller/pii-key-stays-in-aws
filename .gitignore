@@ -1,0 +1,17 @@
+# secrets & local state (never commit)
+.secrets/
+**/.env
+*.p8
+*.pem
+infra/outputs.json
+
+# build / envs / caches
+.pixi/
+**/.venv/
+**/cdk.out/
+**/node_modules/
+**/__pycache__/
+.pytest_cache/
+*.log
+.snowflake/
+.DS_Store
